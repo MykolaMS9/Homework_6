@@ -38,10 +38,12 @@ EXTENSIONS = [['.jpeg', '.png', '.jpg', '.svg'],
               ['.mp3', '.ogg', '.wav', '.amr', '.flac'],
               ['.zip', '.gz', '.tar']]
 
+
 def createFolders(folders):
     for val in folders:
         if not Path(val).exists():
             os.mkdir(val)
+
 createFolders(FOLDERS)
 
 # Пошук та перенесення файлів
@@ -51,97 +53,68 @@ deletedDir = []
 exFolders = [[], [], [], [], []]
 exUnknown = []
 
-def replaceFiles(p):
+def findUnknownFiles(dir):
+    for val in dir.iterdir():
+        if not val.is_dir() and not val.suffix in EXTENSIONS:
+            unknownFiles.append(str(val))
+            exUnknown.append(val.suffix)
+
+def checkName(exsistPath, destinationPath):
     global newname
-    for index in range(5):
+    if os.path.exists(os.path.join(destinationPath, exsistPath.name)):
+        newname += 1
+        name = f'{str(exsistPath.name).replace(exsistPath.suffix, "")}_{newname}'
+    else:
+        name = str(exsistPath.name).replace(exsistPath.suffix, "")
+    return name
+
+def replaceFiles(p):
+    for ind in range(5):
         flag = False
         for val in p.iterdir():
-            if val.suffix in EXTENSIONS[index]:
+            if val.suffix in EXTENSIONS[ind]:
                 if not flag:  # для виводу шляху
                     flag = True
-                    print(f'From folder {str(p)} removed to {FOLDERS[index]} next files:')
-                if os.path.exists(os.path.join(FOLDERS[index], val.name)):
-                    newname += 1
-                    name = f'{str(val.name).replace(val.suffix, "")}_{newname}.{val.suffix}'
-                else:
-                    name = str(val.name).replace(val.suffix, "")
-                namefile = Path(os.path.join(FOLDERS[index], f'{normalize(name)}{val.suffix}'))
+                    print(f'From folder {str(p)} removed to {FOLDERS[ind]} next files:')
+                namefile = Path(os.path.join(FOLDERS[ind], f'{normalize(checkName(val, FOLDERS[ind]))}{val.suffix}'))
                 shutil.move(val, namefile)
-                exFolders[index].append(val.suffix)
+                exFolders[ind].append(val.suffix)
                 if val.name == namefile.name:
                     print('{:^10}{:<40}'.format('', f'{val.name}'))
                 else:
                     print('{:^10}{:<40}{:^7}{:<40}'.format('Renamed', f'{val.name}', '-->', f'{namefile.name}'))
         if flag:
             print('-' * 100)
-    for val in p.iterdir():
+    for val in p.iterdir():  #рекурсія
         if val.is_dir() and not str(val) in FOLDERS:
             replaceFiles(val)
-    for val in p.iterdir():
-        if not val.is_dir() and not val.suffix in EXTENSIONS:
-            unknownFiles.append(str(val))
-            exUnknown.append(val.suffix)
+    findUnknownFiles(p)
     if not os.listdir(p):
         deletedDir.append(str(p))
         os.rmdir(p)
 
 replaceFiles(Path(sys.argv[1]))
 
-if Path(FOLDERS[0]):
-    print(f'Photo:')
-    for val in Path(FOLDERS[0]).iterdir():
-        print('{:^10}{:<40}'.format('', f'{val.name}'))
+def printFiles(path, text):
+    if path:
+        print(text)
+        for val in path.iterdir():
+            print('{:^10}{:<40}'.format('', f'{val.name}'))
 
-if Path(FOLDERS[1]):
-    print(f'Video:')
-    for val in Path(FOLDERS[1]).iterdir():
-        print('{:^10}{:<40}'.format('', f'{val.name}'))
-
-if Path(FOLDERS[2]):
-    print(f'Documents:')
-    for val in Path(FOLDERS[2]).iterdir():
-        print('{:^10}{:<40}'.format('', f'{val.name}'))
-
-if Path(FOLDERS[3]):
-    print(f'Music:')
-    for val in Path(FOLDERS[3]).iterdir():
-        print('{:^10}{:<40}'.format('', f'{val.name}'))
-
-if Path(FOLDERS[4]):
-    print(f'Archives:')
-    for val in Path(FOLDERS[4]).iterdir():
-        print('{:^10}{:<40}'.format('', f'{val.name}'))
-
-
-
-if deletedDir != []:
-    print(f'Next empty folder was deleted:' if len(deletedDir) == 1 else f'Next empty folders ware deleted:')
-    for val in deletedDir:
-        print('{:^10}{:<40}'.format('', f'{val}'))
+[printFiles(Path(v1), v2) for v1, v2 in zip(FOLDERS, ['Photo:', 'Video:', 'Documents:', 'Music:', 'Archives:'])]
 
 if unknownFiles:
     print('Next unknown file:') if len(unknownFiles) == 1 else print(f'Next unknown files:')
     for val in unknownFiles:
         print('{:^10}{:<40}'.format('', f'{val}'))
 
-if exFolders[0]:
-    print(f'Image extensions:')
-    print('{:^15}{:<50}'.format('', f'{", ".join(set(exFolders[0]))}'))
-if exFolders[1]:
-    print(f'Video extensions:')
-    print('{:^15}{:<50}'.format('', f'{", ".join(set(exFolders[1]))}'))
-if exFolders[2]:
-    print(f'Documents extensions:')
-    print('{:^15}{:<50}'.format('', f'{", ".join(set(exFolders[2]))}'))
-if exFolders[3]:
-    print(f'Audio extensions:')
-    print('{:^15}{:<50}'.format('', f'{", ".join(set(exFolders[3]))}'))
-if exFolders[4]:
-    print(f'Archives extensions:')
-    print('{:^15}{:<50}'.format('', f'{", ".join(set(exFolders[4]))}'))
-if exUnknown:
-    print('Unknown extension:') if len(exUnknown) == 1 else print(f'Unknown extensions:')
-    print('{:^15}{:<50}'.format('', f'{", ".join(set(exUnknown))}'))
+def printExtensions(Value, text):
+    if Value:
+        print(text)
+        print('{:^15}{:<50}'.format('', f'{", ".join(set(Value))}'))
+
+[printExtensions(v1,v2) for v1, v2 in zip(exFolders, ['Image extensions:', 'Video extensions:', 'Documents extensions:', 'Audio extensions:', 'Archives extensions:'])]
+printExtensions(exUnknown, 'Unknown extensions:')
 
 # розпаковка архівів
 for val in Path(FOLDERS[4]).iterdir():
